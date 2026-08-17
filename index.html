@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Timer Treino / Descanso</title>
+  <style>
+    :root {
+      --bg-1: #0b0f1a;
+      --bg-2: #131a2b;
+      --card: rgba(255, 255, 255, 0.04);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #eef1f8;
+      --text-dim: #8a93a8;
+      --accent: #5eead4;
+      --accent-2: #a78bfa;
+      --treino: #5eead4;
+      --descanso: #fbbf24;
+      --danger: #fb7185;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background:
+        radial-gradient(circle at 20% 15%, rgba(94, 234, 212, 0.10), transparent 40%),
+        radial-gradient(circle at 80% 85%, rgba(167, 139, 250, 0.12), transparent 45%),
+        linear-gradient(160deg, var(--bg-1), var(--bg-2));
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background: var(--card);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--card-border);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+      padding: 28px 26px 32px;
+      border-radius: 22px;
+      width: 380px;
+      text-align: center;
+    }
+
+    h2 {
+      margin: 0 0 18px;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    /* Contador de voltas */
+    .counter-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 22px;
+      padding: 14px 0 10px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+      border: 1px solid var(--card-border);
+    }
+
+    .counter-label {
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 2px;
+    }
+
+    .counter-value {
+      font-size: 128px;
+      font-weight: 800;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      transition: transform 0.25s ease;
+    }
+
+    .counter-value.bump {
+      transform: scale(1.18);
+    }
+
+    .presets {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .preset-btn {
+      flex: 1;
+      width: auto;
+      margin-top: 0;
+      padding: 9px 4px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+    }
+
+    .preset-btn:hover {
+      filter: none;
+      transform: none;
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent);
+    }
+
+    .preset-btn.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #0b0f1a;
+      border-color: transparent;
+    }
+
+    .fields {
+      display: flex;
+      gap: 10px;
+    }
+
+    .field {
+      flex: 1;
+      text-align: left;
+    }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 10px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      background: rgba(0, 0, 0, 0.25);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input::placeholder {
+      color: rgba(255, 255, 255, 0.28);
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.15);
+    }
+
+    button {
+      width: 100%;
+      padding: 13px;
+      margin-top: 16px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      color: #0b0f1a;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    button:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button.rodando {
+      background: linear-gradient(135deg, var(--danger), #f97316);
+      color: #1a0b0b;
+    }
+
+    .timer {
+      font-size: 52px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-top: 22px;
+      letter-spacing: 2px;
+      color: var(--treino);
+      transition: color 0.3s ease;
+    }
+
+    .timer.descanso {
+      color: var(--descanso);
+    }
+
+    .status {
+      margin-top: 10px;
+      display: inline-block;
+      padding: 5px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-dim);
+    }
+
+    .status.treino {
+      color: var(--treino);
+      background: rgba(94, 234, 212, 0.12);
+    }
+
+    .status.descanso {
+      color: var(--descanso);
+      background: rgba(251, 191, 36, 0.12);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Timer</h2>
+
+    <div class="counter-box">
+      <div class="counter-label">Voltas</div>
+      <div class="counter-value" id="contador">0</div>
+    </div>
+
+    <div class="presets">
+      <button type="button" class="preset-btn" data-duracao="20" data-intervalo="8">20/8</button>
+      <button type="button" class="preset-btn" data-duracao="20" data-intervalo="12">20/12</button>
+      <button type="button" class="preset-btn" data-duracao="30" data-intervalo="8">30/8</button>
+      <button type="button" class="preset-btn" data-duracao="30" data-intervalo="12">30/12</button>
+    </div>
+
+    <div class="fields">
+      <div class="field">
+        <label for="duracao">Duração (s)</label>
+        <input type="number" id="duracao" placeholder="40" />
+      </div>
+      <div class="field">
+        <label for="intervalo">Intervalo (s)</label>
+        <input type="number" id="intervalo" placeholder="20" />
+      </div>
+    </div>
+
+    <button id="btn">Início</button>
+
+    <div class="timer" id="display">00:00</div>
+    <div class="status" id="status">Parado</div>
+  </div>
+
+  <script>
+    let running = false;
+    let timerId = null;
+    let tempoRestante = 0;
+    let modo = "treino";
+    let voltas = 0;
+
+    let DURACAO = 0;
+    let INTERVALO = 0;
+
+    const display = document.getElementById("display");
+    const btn = document.getElementById("btn");
+    const status = document.getElementById("status");
+    const contador = document.getElementById("contador");
+
+    function formatarTempo(segundos) {
+      const m = Math.floor(segundos / 60).toString().padStart(2, "0");
+      const s = (segundos % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    function beep(duracao, frequencia = 1000) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.frequency.value = frequencia;
+      osc.type = "sine";
+      gain.gain.value = 1;
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      setTimeout(() => {
+        osc.stop();
+        ctx.close();
+      }, duracao);
+    }
+
+    function bipLongo() {
+      beep(800, 1200);
+    }
+
+    function bipCurtoTriplo() {
+      let count = 0;
+      const i = setInterval(() => {
+        beep(200, 1000);
+        count++;
+        if (count === 3) clearInterval(i);
+      }, 300);
+    }
+
+    function atualizarModoUI() {
+      display.classList.toggle("descanso", modo === "intervalo");
+      status.classList.toggle("treino", modo === "treino");
+      status.classList.toggle("descanso", modo === "intervalo");
+    }
+
+    function atualizarContador() {
+      contador.textContent = voltas;
+      contador.classList.add("bump");
+      setTimeout(() => contador.classList.remove("bump"), 250);
+    }
+
+    function iniciar() {
+      DURACAO = parseInt(document.getElementById("duracao").value);
+      INTERVALO = parseInt(document.getElementById("intervalo").value);
+
+      if (!DURACAO || !INTERVALO) {
+        alert("Preencha duração e intervalo.");
+        return;
+      }
+
+      running = true;
+      modo = "treino";
+      tempoRestante = DURACAO;
+      voltas = 0;
+
+      contador.textContent = voltas;
+      btn.textContent = "Fim";
+      btn.classList.add("rodando");
+      status.textContent = "Treino";
+      display.textContent = formatarTempo(tempoRestante);
+      atualizarModoUI();
+
+      bipLongo();
+
+      timerId = setInterval(tick, 1000);
+    }
+
+    function tick() {
+      tempoRestante--;
+      display.textContent = formatarTempo(tempoRestante);
+
+      if (tempoRestante > 0) return;
+
+      if (modo === "treino") {
+        bipCurtoTriplo();
+        modo = "intervalo";
+        tempoRestante = INTERVALO;
+        status.textContent = "Descanso";
+      } else {
+        bipLongo();
+        modo = "treino";
+        tempoRestante = DURACAO;
+        status.textContent = "Treino";
+        voltas++;
+        atualizarContador();
+      }
+
+      display.textContent = formatarTempo(tempoRestante);
+      atualizarModoUI();
+    }
+
+    function parar() {
+      clearInterval(timerId);
+      running = false;
+      tempoRestante = 0;
+      voltas = 0;
+      contador.textContent = voltas;
+      display.textContent = "00:00";
+      display.classList.remove("descanso");
+      status.textContent = "Parado";
+      status.classList.remove("treino", "descanso");
+      btn.textContent = "Início";
+      btn.classList.remove("rodando");
+    }
+
+    btn.addEventListener("click", () => {
+      running ? parar() : iniciar();
+    });
+
+    const presetButtons = document.querySelectorAll(".preset-btn");
+    presetButtons.forEach((presetBtn) => {
+      presetBtn.addEventListener("click", () => {
+        document.getElementById("duracao").value = presetBtn.dataset.duracao;
+        document.getElementById("intervalo").value = presetBtn.dataset.intervalo;
+        presetButtons.forEach((b) => b.classList.remove("active"));
+        presetBtn.classList.add("active");
+      });
+    });
+  </script>
+</body>
+</html>
