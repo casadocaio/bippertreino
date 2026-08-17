@@ -240,10 +240,35 @@
       color: var(--descanso);
       background: rgba(251, 191, 36, 0.12);
     }
+
+    .install-btn {
+      display: none;
+      width: 100%;
+      margin: 0 0 18px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .install-btn:hover {
+      filter: none;
+      transform: none;
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent);
+    }
   </style>
 </head>
 <body>
   <div class="container">
+    <button type="button" id="btnInstall" class="install-btn">📲 Adicionar à tela inicial</button>
+
     <h2>Timer</h2>
 
     <div class="counter-box">
@@ -417,6 +442,59 @@
         });
       });
     }
+
+    // Botão "Adicionar à tela inicial"
+    const btnInstall = document.getElementById("btnInstall");
+    let deferredPrompt = null;
+
+    function isStandalone() {
+      return (
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone === true
+      );
+    }
+
+    function isIOS() {
+      return /iphone|ipad|ipod/i.test(window.navigator.userAgent) && !window.MSStream;
+    }
+
+    if (!isStandalone()) {
+      // iOS/Safari não dispara beforeinstallprompt: mostramos o botão
+      // direto e, ao clicar, explicamos o passo manual.
+      if (isIOS()) {
+        btnInstall.style.display = "block";
+      }
+
+      // Chrome/Edge/Android: captura o evento nativo para poder
+      // disparar o prompt de instalação ao clicar no botão.
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        btnInstall.style.display = "block";
+      });
+    }
+
+    btnInstall.addEventListener("click", async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        if (outcome === "accepted") {
+          btnInstall.style.display = "none";
+        }
+      } else if (isIOS()) {
+        alert(
+          'Para instalar: toque no ícone de Compartilhar (⬆️) na barra do Safari e depois em "Adicionar à Tela de Início".'
+        );
+      } else {
+        alert('Use o menu do navegador e escolha "Adicionar à tela inicial" ou "Instalar app".');
+      }
+    });
+
+    window.addEventListener("appinstalled", () => {
+      btnInstall.style.display = "none";
+      deferredPrompt = null;
+    });
 
     const presetButtons = document.querySelectorAll(".preset-btn");
     presetButtons.forEach((presetBtn) => {
