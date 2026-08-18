@@ -263,6 +263,89 @@
       background: rgba(255, 255, 255, 0.1);
       border-color: var(--accent);
     }
+
+    /* Volume */
+    .volume-box {
+      margin-top: 14px;
+      padding: 10px 14px 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      text-align: left;
+    }
+
+    .volume-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .volume-header span {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(
+        to right,
+        var(--accent) 0%,
+        var(--accent) 50%,
+        var(--accent-2) 50%,
+        var(--accent-2) var(--vol-pct, 50%),
+        rgba(255, 255, 255, 0.1) var(--vol-pct, 50%),
+        rgba(255, 255, 255, 0.1) 100%
+      );
+      outline: none;
+      margin: 0;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      margin-top: -6px;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border: none;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+    }
+
+    /* Pausar */
+    button.btn-pause {
+      display: none;
+      background: linear-gradient(135deg, var(--accent-2), var(--accent));
+      color: #0b0f1a;
+    }
+
+    button.btn-pause.pausado {
+      background: linear-gradient(135deg, var(--descanso), #f97316);
+      color: #1a0b0b;
+    }
+
+    .status.pausado {
+      color: var(--descanso);
+      background: rgba(251, 191, 36, 0.12);
+    }
   </style>
 </head>
 <body>
@@ -294,6 +377,15 @@
       </div>
     </div>
 
+    <div class="volume-box">
+      <div class="volume-header">
+        <label for="volume">🔊 Volume</label>
+        <span id="volumeValue">100%</span>
+      </div>
+      <input type="range" id="volume" min="0" max="200" step="5" value="100" />
+    </div>
+
+    <button type="button" id="btnPause" class="btn-pause">Pausar</button>
     <button id="btn">Início</button>
 
     <div class="timer" id="display">00:00</div>
@@ -302,6 +394,7 @@
 
   <script>
     let running = false;
+    let paused = false;
     let timerId = null;
     let tempoRestante = 0;
     let modo = "treino";
@@ -312,8 +405,11 @@
 
     const display = document.getElementById("display");
     const btn = document.getElementById("btn");
+    const btnPause = document.getElementById("btnPause");
     const status = document.getElementById("status");
     const contador = document.getElementById("contador");
+    const volumeSlider = document.getElementById("volume");
+    const volumeValue = document.getElementById("volumeValue");
 
     function formatarTempo(segundos) {
       const m = Math.floor(segundos / 60).toString().padStart(2, "0");
@@ -321,8 +417,32 @@
       return `${m}:${s}`;
     }
 
+    // Áudio: usamos um único AudioContext reaproveitado em vez de criar
+    // (e fechar) um novo a cada beep. Em muitos navegadores móveis —
+    // principalmente Safari/iOS mais antigos — existe um limite baixo de
+    // contextos de áudio simultâneos; criar um por beep fazia o alarme
+    // parar de tocar depois de poucas trocas de fase. Reaproveitar o
+    // contexto também facilita dar `resume()` nele quando o navegador o
+    // suspende (tela bloqueada, app em segundo plano etc).
+    let audioCtx = null;
+    let masterGain = null;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioCtor();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = parseInt(volumeSlider.value, 10) / 100;
+        masterGain.connect(audioCtx.destination);
+      }
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume().catch(() => {});
+      }
+      return audioCtx;
+    }
+
     function beep(duracao, frequencia = 1000) {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = getAudioContext();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
@@ -331,12 +451,11 @@
       gain.gain.value = 1;
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(masterGain);
 
       osc.start();
       setTimeout(() => {
         osc.stop();
-        ctx.close();
       }, duracao);
     }
 
@@ -355,6 +474,7 @@
 
     function atualizarModoUI() {
       display.classList.toggle("descanso", modo === "intervalo");
+      status.classList.remove("pausado");
       status.classList.toggle("treino", modo === "treino");
       status.classList.toggle("descanso", modo === "intervalo");
     }
@@ -374,7 +494,12 @@
         return;
       }
 
+      // Desbloqueia/retoma o AudioContext dentro do gesto de clique do
+      // usuário — obrigatório em Safari/iOS para o áudio funcionar.
+      getAudioContext();
+
       running = true;
+      paused = false;
       modo = "treino";
       tempoRestante = DURACAO;
       voltas = 0;
@@ -382,12 +507,37 @@
       contador.textContent = voltas;
       btn.textContent = "Fim";
       btn.classList.add("rodando");
+      btnPause.style.display = "block";
+      btnPause.textContent = "Pausar";
+      btnPause.classList.remove("pausado");
       status.textContent = "Treino";
       display.textContent = formatarTempo(tempoRestante);
       atualizarModoUI();
 
       bipLongo();
 
+      timerId = setInterval(tick, 1000);
+    }
+
+    function pausar() {
+      if (!running || paused) return;
+      clearInterval(timerId);
+      paused = true;
+      btnPause.textContent = "Continuar";
+      btnPause.classList.add("pausado");
+      status.textContent = "Pausado";
+      status.classList.remove("treino", "descanso");
+      status.classList.add("pausado");
+    }
+
+    function continuar() {
+      if (!running || !paused) return;
+      getAudioContext();
+      paused = false;
+      btnPause.textContent = "Pausar";
+      btnPause.classList.remove("pausado");
+      status.textContent = modo === "treino" ? "Treino" : "Descanso";
+      atualizarModoUI();
       timerId = setInterval(tick, 1000);
     }
 
@@ -418,19 +568,67 @@
     function parar() {
       clearInterval(timerId);
       running = false;
+      paused = false;
       tempoRestante = 0;
       voltas = 0;
       contador.textContent = voltas;
       display.textContent = "00:00";
       display.classList.remove("descanso");
       status.textContent = "Parado";
-      status.classList.remove("treino", "descanso");
+      status.classList.remove("treino", "descanso", "pausado");
       btn.textContent = "Início";
       btn.classList.remove("rodando");
+      btnPause.style.display = "none";
+      btnPause.textContent = "Pausar";
+      btnPause.classList.remove("pausado");
     }
 
     btn.addEventListener("click", () => {
       running ? parar() : iniciar();
+    });
+
+    btnPause.addEventListener("click", () => {
+      paused ? continuar() : pausar();
+    });
+
+    // Volume: 100% = mesmo volume "cru" do dispositivo, até 200% para
+    // amplificar além do normal (igual ao ganho do VLC).
+    function aplicarVolume(percent) {
+      volumeValue.textContent = percent + "%";
+      volumeSlider.style.setProperty("--vol-pct", (percent / 200) * 100 + "%");
+      if (masterGain) {
+        masterGain.gain.value = percent / 100;
+      }
+      try {
+        localStorage.setItem("bipper_volume", String(percent));
+      } catch (e) {
+        // localStorage pode estar indisponível (modo privado etc.)
+      }
+    }
+
+    (function initVolume() {
+      let salvo = 100;
+      try {
+        const raw = parseInt(localStorage.getItem("bipper_volume"), 10);
+        if (Number.isFinite(raw) && raw >= 0 && raw <= 200) salvo = raw;
+      } catch (e) {
+        // ignora
+      }
+      volumeSlider.value = salvo;
+      aplicarVolume(salvo);
+    })();
+
+    volumeSlider.addEventListener("input", () => {
+      aplicarVolume(parseInt(volumeSlider.value, 10));
+    });
+
+    // iOS/Safari (e outros navegadores móveis) suspendem o AudioContext
+    // quando a aba/app vai para segundo plano ou a tela bloqueia. Ao
+    // voltar, tentamos retomar para os beeps continuarem funcionando.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume().catch(() => {});
+      }
     });
 
     // Registra o service worker para o app funcionar offline
