@@ -136,6 +136,18 @@
       border-color: transparent;
     }
 
+    .preset-btn:disabled,
+    input:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      filter: none;
+    }
+
+    .preset-btn:disabled:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--card-border);
+    }
+
     .fields {
       display: flex;
       gap: 10px;
@@ -295,15 +307,11 @@
       width: 100%;
       height: 6px;
       border-radius: 999px;
-      background: linear-gradient(
-        to right,
-        var(--accent) 0%,
-        var(--accent) 50%,
-        var(--accent-2) 50%,
-        var(--accent-2) var(--vol-pct, 50%),
-        rgba(255, 255, 255, 0.1) var(--vol-pct, 50%),
-        rgba(255, 255, 255, 0.1) 100%
-      );
+      /* O preenchimento real é calculado em JS (atualizarSliderVolume),
+         pois precisa compensar o raio do thumb para acompanhar sua
+         posição exata — uma gradiente em % puro fica desalinhada da
+         bolinha, já que o thumb não percorre 0%-100% da largura. */
+      background: rgba(255, 255, 255, 0.1);
       outline: none;
       margin: 0;
     }
@@ -410,6 +418,19 @@
     const contador = document.getElementById("contador");
     const volumeSlider = document.getElementById("volume");
     const volumeValue = document.getElementById("volumeValue");
+    const duracaoInput = document.getElementById("duracao");
+    const intervaloInput = document.getElementById("intervalo");
+
+    // Presets e campos de duração/intervalo só podem ser alterados com o
+    // timer zerado: travam ao iniciar (e continuam travados enquanto
+    // pausado) e só liberam de novo quando "Fim" é apertado.
+    function travarControles(travado) {
+      document.querySelectorAll(".preset-btn").forEach((b) => {
+        b.disabled = travado;
+      });
+      duracaoInput.disabled = travado;
+      intervaloInput.disabled = travado;
+    }
 
     function formatarTempo(segundos) {
       const m = Math.floor(segundos / 60).toString().padStart(2, "0");
@@ -504,6 +525,7 @@
       tempoRestante = DURACAO;
       voltas = 0;
 
+      travarControles(true);
       contador.textContent = voltas;
       btn.textContent = "Fim";
       btn.classList.add("rodando");
@@ -571,6 +593,7 @@
       paused = false;
       tempoRestante = 0;
       voltas = 0;
+      travarControles(false);
       contador.textContent = voltas;
       display.textContent = "00:00";
       display.classList.remove("descanso");
@@ -593,9 +616,35 @@
 
     // Volume: 100% = mesmo volume "cru" do dispositivo, até 200% para
     // amplificar além do normal (igual ao ganho do VLC).
+
+    // Preenchimento visual do slider calculado em pixels, compensando o
+    // raio do thumb (que não percorre 0%-100% da largura do input, e sim
+    // de thumb/2 até largura - thumb/2). Isso mantém a cor sempre
+    // alinhada com a posição real da bolinha. A cor muda em 100% (o
+    // "volume cru") para indicar visualmente quando está amplificando.
+    function atualizarSliderVolume(percent) {
+      const min = parseFloat(volumeSlider.min) || 0;
+      const max = parseFloat(volumeSlider.max) || 200;
+      const largura = volumeSlider.offsetWidth;
+      const thumb = 18;
+      const util = Math.max(largura - thumb, 0);
+      const paraPx = (v) => thumb / 2 + ((v - min) / (max - min)) * util;
+
+      const fillPx = paraPx(Math.min(Math.max(percent, min), max));
+      const stops =
+        percent <= 100
+          ? `var(--accent) 0px, var(--accent) ${fillPx}px, rgba(255, 255, 255, 0.1) ${fillPx}px, rgba(255, 255, 255, 0.1) 100%`
+          : (() => {
+              const midPx = paraPx(100);
+              return `var(--accent) 0px, var(--accent) ${midPx}px, var(--accent-2) ${midPx}px, var(--accent-2) ${fillPx}px, rgba(255, 255, 255, 0.1) ${fillPx}px, rgba(255, 255, 255, 0.1) 100%`;
+            })();
+
+      volumeSlider.style.background = `linear-gradient(to right, ${stops})`;
+    }
+
     function aplicarVolume(percent) {
       volumeValue.textContent = percent + "%";
-      volumeSlider.style.setProperty("--vol-pct", (percent / 200) * 100 + "%");
+      atualizarSliderVolume(percent);
       if (masterGain) {
         masterGain.gain.value = percent / 100;
       }
@@ -605,6 +654,10 @@
         // localStorage pode estar indisponível (modo privado etc.)
       }
     }
+
+    window.addEventListener("resize", () => {
+      atualizarSliderVolume(parseInt(volumeSlider.value, 10));
+    });
 
     (function initVolume() {
       let salvo = 100;
