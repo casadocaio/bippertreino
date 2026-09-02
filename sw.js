@@ -1,11 +1,12 @@
 // Bump esta versão sempre que index.html/manifest/ícones mudarem,
 // para forçar os clientes a buscar os arquivos novos.
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v7";
 const CACHE_NAME = `bippertreino-${CACHE_VERSION}`;
 
 const ASSETS = [
   "./",
   "./index.html",
+  "./app.js",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
