@@ -48,6 +48,8 @@ const filaChipsEl = document.getElementById("filaChips");
 const btnLimparFila = document.getElementById("btnLimparFila");
 const descansoToggle = document.getElementById("descansoToggle");
 const descansoSegundosInput = document.getElementById("descansoSegundos");
+const descansoMenos = document.getElementById("descansoMenos");
+const descansoMais = document.getElementById("descansoMais");
 
 // Presets, campos de duração/intervalo, abas, a fila da sequência e o
 // descanso opcional só podem ser alterados com o timer zerado: travam
@@ -66,8 +68,22 @@ function travarControles(travado) {
   });
   btnLimparFila.disabled = travado;
   descansoToggle.disabled = travado;
-  descansoSegundosInput.disabled = travado || !descansoAtivo;
+  atualizarControlesDescanso();
   renderFila();
+}
+
+// Seletor de segundos de descanso (input + botões +/-, mais fáceis de
+// tocar no celular do que as setinhas minúsculas do input number):
+// desabilitados quando o timer está rodando ou quando o toggle está
+// desligado; +/- também desabilitam individualmente ao chegar no
+// mínimo/máximo (5-30).
+function atualizarControlesDescanso() {
+  const bloqueado = running || !descansoAtivo;
+  const min = parseInt(descansoSegundosInput.min, 10) || 5;
+  const max = parseInt(descansoSegundosInput.max, 10) || 30;
+  descansoSegundosInput.disabled = bloqueado;
+  descansoMenos.disabled = bloqueado || descansoSegundos <= min;
+  descansoMais.disabled = bloqueado || descansoSegundos >= max;
 }
 
 function formatarTempo(segundos) {
@@ -699,7 +715,7 @@ function salvarDescanso() {
 function aplicarDescansoAtivo(ativo) {
   descansoAtivo = ativo;
   descansoToggle.checked = ativo;
-  descansoSegundosInput.disabled = running || !ativo;
+  atualizarControlesDescanso();
   salvarDescanso();
 }
 
@@ -713,6 +729,7 @@ function clampDescansoSegundos(valor) {
 function aplicarDescansoSegundos(valor) {
   descansoSegundos = clampDescansoSegundos(valor);
   descansoSegundosInput.value = descansoSegundos;
+  atualizarControlesDescanso();
   salvarDescanso();
 }
 
@@ -724,6 +741,16 @@ descansoToggle.addEventListener("change", () => {
 descansoSegundosInput.addEventListener("change", () => {
   if (running) return;
   aplicarDescansoSegundos(parseInt(descansoSegundosInput.value, 10));
+});
+
+descansoMenos.addEventListener("click", () => {
+  if (running || !descansoAtivo) return;
+  aplicarDescansoSegundos(descansoSegundos - 1);
+});
+
+descansoMais.addEventListener("click", () => {
+  if (running || !descansoAtivo) return;
+  aplicarDescansoSegundos(descansoSegundos + 1);
 });
 
 (function initDescanso() {

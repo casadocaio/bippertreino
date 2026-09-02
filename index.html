@@ -437,14 +437,14 @@
     .seq-descanso-valor {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
       font-size: 12px;
       color: var(--text-dim);
     }
 
     .seq-descanso-valor input[type="number"] {
-      width: 52px;
-      padding: 6px 4px;
+      width: 38px;
+      padding: 6px 2px;
       font-size: 14px;
       text-align: center;
     }
@@ -452,6 +452,45 @@
     .seq-descanso-valor input[type="number"]:disabled {
       opacity: 0.45;
       cursor: not-allowed;
+    }
+
+    /* Botões +/- ao lado do seletor: no celular é bem mais fácil tocar
+       neles do que mexer nas setinhas minúsculas do input number. */
+    .seq-descanso-stepper {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      margin-top: 0;
+      padding: 0;
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+    }
+
+    .seq-descanso-stepper:hover {
+      filter: none;
+      transform: none;
+      background: rgba(255, 255, 255, 0.16);
+      border-color: var(--accent);
+    }
+
+    .seq-descanso-stepper:active {
+      transform: none;
+    }
+
+    .seq-descanso-stepper:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      filter: none;
+    }
+
+    .seq-descanso-stepper:disabled:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--card-border);
     }
 
     button {
@@ -685,8 +724,10 @@
           </label>
           <span class="seq-descanso-label">Descanso ao final da volta</span>
           <div class="seq-descanso-valor">
+            <button type="button" id="descansoMenos" class="seq-descanso-stepper" aria-label="Diminuir descanso">−</button>
             <input type="number" id="descansoSegundos" min="5" max="30" step="1" value="15" />
             <span>s</span>
+            <button type="button" id="descansoMais" class="seq-descanso-stepper" aria-label="Aumentar descanso">+</button>
           </div>
         </div>
       </div>

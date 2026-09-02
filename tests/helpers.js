@@ -129,7 +129,9 @@ export const FIXTURE_HTML = `
     </div>
     <div class="seq-descanso-box">
       <input type="checkbox" id="descansoToggle" />
+      <button type="button" id="descansoMenos">−</button>
       <input type="number" id="descansoSegundos" min="5" max="30" step="1" value="15" />
+      <button type="button" id="descansoMais">+</button>
     </div>
   </div>
   <div class="volume-box">

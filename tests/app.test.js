@@ -32,6 +32,8 @@ function refs() {
     filaChipsEl: document.getElementById("filaChips"),
     descansoToggle: document.getElementById("descansoToggle"),
     descansoSegundosInput: document.getElementById("descansoSegundos"),
+    descansoMenos: document.getElementById("descansoMenos"),
+    descansoMais: document.getElementById("descansoMais"),
   };
 }
 
@@ -1041,6 +1043,59 @@ describe("configuração do descanso (aba Sequência)", () => {
     ligarDescanso(25); // deve ser ignorado, timer rodando
     expect(app.getState().descansoAtivo).toBe(false);
     expect(app.getState().descansoSegundos).toBe(15);
+  });
+
+  it("botão + incrementa e botão − decrementa de 1 em 1", async () => {
+    app = await loadApp();
+    el = refs();
+    ligarDescanso(15);
+
+    el.descansoMais.click();
+    expect(app.getState().descansoSegundos).toBe(16);
+    expect(el.descansoSegundosInput.value).toBe("16");
+    expect(localStorage.getItem("bipper_descanso_segundos")).toBe("16");
+
+    el.descansoMenos.click();
+    el.descansoMenos.click();
+    expect(app.getState().descansoSegundos).toBe(14);
+  });
+
+  it("botão − desabilita ao chegar no mínimo (5) e botão + no máximo (30)", async () => {
+    app = await loadApp();
+    el = refs();
+    ligarDescanso(6);
+    expect(el.descansoMenos.disabled).toBe(false);
+
+    el.descansoMenos.click(); // 6 -> 5
+    expect(app.getState().descansoSegundos).toBe(5);
+    expect(el.descansoMenos.disabled).toBe(true);
+    expect(el.descansoMais.disabled).toBe(false);
+
+    ligarDescanso(29);
+    el.descansoMais.click(); // 29 -> 30
+    expect(app.getState().descansoSegundos).toBe(30);
+    expect(el.descansoMais.disabled).toBe(true);
+  });
+
+  it("+/- ficam desabilitados quando o toggle está desligado", async () => {
+    app = await loadApp();
+    el = refs();
+    expect(el.descansoMenos.disabled).toBe(true);
+    expect(el.descansoMais.disabled).toBe(true);
+  });
+
+  it("+/- ficam travados enquanto o timer roda e são ignorados se clicados", async () => {
+    app = await loadApp();
+    el = refs();
+    ligarDescanso(15);
+    app.selecionarAba("sequencia");
+    [10, 10, 10, 30].forEach((v) => app.adicionarNaFila(v));
+    app.iniciar();
+
+    expect(el.descansoMenos.disabled).toBe(true);
+    expect(el.descansoMais.disabled).toBe(true);
+    el.descansoMais.click();
+    expect(app.getState().descansoSegundos).toBe(15); // não mudou
   });
 });
 
